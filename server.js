@@ -16,6 +16,16 @@ const io = new Server(server, {
 
 app.use(express.static("public"));
 
+// This tells the server: "If anyone goes to the main URL, show them join.html"
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'join.html'));
+});
+
+// Keep your host route as well
+app.get('/host', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'host.html'));
+});
+
 
 // -------------------
 // Helper: Get all possible words for a game
