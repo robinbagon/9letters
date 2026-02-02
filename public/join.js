@@ -143,47 +143,41 @@ socket.on("game-restart", data => {
 });
 
 // WORD SUBMISSION RESULT
+// SINGLE WORD RESULT LISTENER
 socket.on("word-result", result => {
-    if (!result.valid) {
-
-        const scoreEl = document.getElementById("score");
-        
-        // Update the number
+    const inputContainer = document.getElementById("wordInput");
+    
+    // 1. Update the Score (Always do this first)
+    if (result.total !== undefined) {
         scoreEl.textContent = result.total;
-
-        // Trigger the "Pop" animation
-        scoreEl.classList.remove("score-bump"); // Reset if it's already there
-        void scoreEl.offsetWidth;               // Magic trick to "reflow" the DOM
+        
+        // Trigger "Pop" animation
+        scoreEl.classList.remove("score-bump");
+        void scoreEl.offsetWidth; // Force reflow
         scoreEl.classList.add("score-bump");
-
-        feedbackEl.textContent = feedbackMessage(result.reason);
-        feedbackEl.style.color = "crimson";
-
-        // Reset letters
-        currentWord = "";
-        wordInput.value = "";
-        document.querySelectorAll(".letter-btn").forEach(btn => {
-            btn.disabled = false;
-            btn.style.opacity = 1;
-        });
-
-        return;
     }
 
-    // Valid word feedback
-    scoreEl.textContent = result.total;
-    feedbackEl.textContent = `+${result.points} points!`;
-    feedbackEl.style.color = "green";
+    if (!result.valid) {
+        // ERROR HANDLING
+        feedbackEl.textContent = feedbackMessage(result.reason);
+        feedbackEl.style.color = "crimson";
+        
+        inputContainer.classList.add("input-error");
+        setTimeout(() => inputContainer.classList.remove("input-error"), 400);
+    } else {
+        // SUCCESS HANDLING
+        feedbackEl.textContent = `+${result.points} points!`;
+        feedbackEl.style.color = "green";
 
-    setTimeout(() => feedbackEl.textContent = "", 1500);
+        inputContainer.classList.add("input-success");
+        setTimeout(() => {
+            inputContainer.classList.remove("input-success");
+            feedbackEl.textContent = "";
+        }, 1500);
+    }
 
-    // Reset current word and letters
-    currentWord = "";
-    wordInput.value = "";
-    document.querySelectorAll(".letter-btn").forEach(btn => {
-        btn.disabled = false;
-        btn.style.opacity = 1;
-    });
+    // 2. Always reset letters regardless of valid/invalid
+    resetLetters();
 });
 
 // UPDATE PERSONAL WORD LIST
@@ -209,37 +203,16 @@ socket.on("lock-input", () => {
     gameActive = false;
     wordInput.disabled = true;
     submitBtn.disabled = true;
-    feedbackEl.textContent = "Game over!";
-    feedbackEl.style.color = "black";
-    clearInterval(timerInterval);
-    timerEl.textContent = "Time left: 0s";
-});
-
-socket.on("word-result", result => {
-    const inputContainer = document.getElementById("wordInput");
-
-    if (!result.valid) {
-        // ERROR FEEL
-        feedbackEl.textContent = feedbackMessage(result.reason);
-        feedbackEl.style.color = "crimson";
-        
-        inputContainer.classList.add("input-error");
-        setTimeout(() => inputContainer.classList.remove("input-error"), 400);
-
-        // Reset letters
-        resetLetters();
-        return;
+    
+    // Stop the timer loop immediately
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
     }
 
-    // SUCCESS FEEL
-    scoreEl.textContent = result.total;
-    feedbackEl.textContent = `+${result.points} points!`;
-    feedbackEl.style.color = "green";
-
-    inputContainer.classList.add("input-success");
-    setTimeout(() => inputContainer.classList.remove("input-success"), 500);
-
-    resetLetters();
+    timerEl.textContent = "0"; // Just the number!
+    feedbackEl.textContent = "Game over!";
+    feedbackEl.style.color = "black";
 });
 
 // Helper to keep code clean
@@ -286,34 +259,48 @@ clearBtn.onclick = () => {
 // TIMER FUNCTION
 // =================
 function startTimer() {
-    // We need to know the total duration to calculate the percentage
+    // 1. CRITICAL: Clear any existing timer to prevent overlapping (fixes the "0SS" glitch)
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+
     const totalDuration = endTime - Date.now();
+    const fill = document.getElementById("progressFill");
+    const container = document.getElementById("timerContainer");
 
     timerInterval = setInterval(() => {
-        const remaining = Math.max(0, endTime - Date.now());
+        const now = Date.now();
+        const remaining = Math.max(0, endTime - now);
         const seconds = Math.ceil(remaining / 1000);
-        const percentage = (remaining / totalDuration) * 100;
-
-        // Update Text and Progress Bar
-        timerEl.textContent = seconds;
-        const fill = document.getElementById("progressFill");
-        const container = document.getElementById("timerContainer");
         
-        fill.style.width = `${percentage}%`;
+        // Calculate percentage based on the original total duration
+        const percentage = totalDuration > 0 ? (remaining / totalDuration) * 100 : 0;
 
-        // Logic for "Stimulation" levels
-        if (seconds <= 10) {
-            container.className = "timer-danger";
-        } else if (seconds <= 30) {
-            container.className = "timer-warning";
-        } else {
-            container.className = "";
+        // 2. Update ONLY the number (fixes the "TIME LEFT: TIME LEFT" glitch)
+        timerEl.textContent = seconds;
+        
+        if (fill) {
+            fill.style.width = `${percentage}%`;
         }
 
+        // 3. Logic for "Stimulation" levels
+        if (container) {
+            if (seconds <= 10) {
+                container.className = "timer-danger";
+            } else if (seconds <= 30) {
+                container.className = "timer-warning";
+            } else {
+                container.className = "";
+            }
+        }
+
+        // 4. Handle End of Timer
         if (remaining <= 0) {
             clearInterval(timerInterval);
-            container.classList.remove("timer-danger");
-            fill.style.width = "0%";
+            timerInterval = null; // Reset variable
+            if (container) container.classList.remove("timer-danger");
+            if (fill) fill.style.width = "0%";
+            timerEl.textContent = "0"; // Hard set to 0 at the end
         }
     }, 250);
 }
