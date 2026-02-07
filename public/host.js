@@ -165,7 +165,7 @@ socket.on("game-ended", data => {
 // =================
 startBtn.onclick = () => {
     startBtn.disabled = true; // prevent double-start
-    socket.emit("start-game", { code: gameCode, duration: 60 });
+    socket.emit("start-game", { code: gameCode, duration: 90 });
 };
 
 // =================
