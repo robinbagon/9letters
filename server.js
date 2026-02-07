@@ -99,7 +99,7 @@ io.on("connection", socket => {
     });
 
     // -------- HOST STARTS GAME --------
-    socket.on("start-game", ({ code, duration = 60 }) => {
+    socket.on("start-game", ({ code, duration = 90 }) => {
         const game = gameManager.getGame(code);
         if (!game) return;
 
@@ -195,7 +195,7 @@ io.on("connection", socket => {
     // 2. Manual resets for the new round
     game.classScore = 0;
     game.usedWords = new Set(); // Reset the global used words set
-    game.endTime = Date.now() + 60 * 1000; 
+    game.endTime = Date.now() + 90 * 1000; 
 
     // 3. Reset individual player stats so they start at 0
     for (const playerId in game.players) {
@@ -210,7 +210,7 @@ io.on("connection", socket => {
     });
 
     // 5. Set the auto-end timer
-    setTimeout(() => endGame(code), 60 * 1000);
+    setTimeout(() => endGame(code), 90 * 1000);
 });
 
 
